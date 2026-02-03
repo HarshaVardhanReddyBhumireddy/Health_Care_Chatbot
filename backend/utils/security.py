@@ -16,7 +16,16 @@ security = HTTPBearer()
 
 def hash_password(password: str) -> str:
     """Hash a password"""
+
+    # bcrypt hard limit: 72 bytes
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password too long (maximum 72 characters allowed)"
+        )
+
     return pwd_context.hash(password)
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash"""

@@ -3,7 +3,9 @@ from backend.utils.llm import GroqLLM
 from backend.utils.embeddings import VectorStore
 from backend.db import Database
 from backend.logger import get_logger
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = get_logger("RAG")
 
 class RAGSystem:

@@ -13,12 +13,20 @@ class Database:
         if cls._db is None:
             try:
                 uri = os.getenv("MONGO_URI")
+                db_name = os.getenv("MONGO_DB_NAME")
+
+                if not uri:
+                    raise ValueError("MONGO_URI is not set")
+                if not db_name:
+                    raise ValueError("MONGO_DB_NAME is not set")
+
                 logger.info("Connecting to MongoDB")
+                logger.info(f"Using MongoDB database: {db_name}")
 
                 client = MongoClient(uri, server_api=ServerApi("1"))
                 client.admin.command("ping")
 
-                cls._db = client[os.getenv("MONGO_DB_NAME")]
+                cls._db = client[db_name]
                 logger.info("MongoDB connection successful")
 
             except Exception as e:

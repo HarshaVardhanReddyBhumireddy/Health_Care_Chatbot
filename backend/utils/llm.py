@@ -1,7 +1,9 @@
 import os
 from groq import Groq
 from backend.logger import get_logger
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = get_logger("LLM")
 
 class GroqLLM:
