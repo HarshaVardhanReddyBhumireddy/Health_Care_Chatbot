@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from backend.utils.llm import GroqLLM
 from backend.utils.embeddings import VectorStore
 from backend.db import Database
@@ -16,9 +16,11 @@ class RAGSystem:
     def get_user_info(self, user_id: str) -> Dict:
         """Get user basic info (name, email) from users collection"""
         try:
+            from bson import ObjectId
             db = Database.get_db()
             users_collection = db["users"]
-            user = users_collection.find_one({"_id": user_id})
+            # Convert string user_id to ObjectId for MongoDB lookup
+            user = users_collection.find_one({"_id": ObjectId(user_id)})
             
             if user:
                 return {
@@ -262,6 +264,18 @@ IMPORTANT SAFETY RULES:
         query_lower = query.lower()
         return any(keyword in query_lower for keyword in doc_keywords)
     
+    def is_emergency_query(self, query: str) -> bool:
+        """Check if query indicates a medical emergency"""
+        emergency_keywords = [
+            'chest pain', 'heart attack', 'stroke', 'not breathing',
+            "can't breathe", 'cannot breathe', 'severe bleeding',
+            'unconscious', 'fainted', 'passed out', 'suicide',
+            'kill myself', 'overdose', 'poisoning', 'seizure',
+            'choking', 'anaphylaxis', 'allergic reaction'
+        ]
+        query_lower = query.lower()
+        return any(keyword in query_lower for keyword in emergency_keywords)
+    
     def has_user_documents(self, user_id: str) -> bool:
         """Check if user has documents"""
         user_chunks = [c for c in self.vector_store.chunks if c.get("user_id") == user_id]
@@ -272,11 +286,24 @@ IMPORTANT SAFETY RULES:
         query: str, 
         user_id: str, 
         session_id: str,
-        conversation_history: List[Dict] = None
-    ) -> str:
+        conversation_history: List[Dict] = None,
+        target_language: str = "English"
+    ) -> Tuple[str, List[Dict], bool]:
         """
-        Generate personalized response
+        Generate personalized response.
+        Returns Tuple of (response_text, sources_list, is_emergency)
         """
+        # 1. EMERGENCY PRE-CHECK
+        if self.is_emergency_query(query):
+            emergency_msg = (
+                "🚨 **EMERGENCY DETECTED** 🚨\n\n"
+                "Your symptoms may require immediate medical attention. "
+                "I am an AI and cannot handle medical emergencies or provide definitive diagnosis.\n\n"
+                "**Please contact emergency services (like 911) immediately or go to the nearest hospital.**"
+            )
+            logger.warning(f"[{session_id}] EMERGENCY QUERY DETECTED: {query}")
+            return emergency_msg, [], True
+
         # Load user info and profile
         user_info = self.get_user_info(user_id)
         user_name = user_info.get('username', '')
@@ -302,21 +329,39 @@ IMPORTANT SAFETY RULES:
             # Only block truly inappropriate content
             spam_keywords = ['hack', 'crack', 'illegal', 'porn', 'xxx', 'violence', 'weapon']
             if any(word in query.lower() for word in spam_keywords):
-                return "I can't help with that. Please ask health-related questions."
+                return "I can't help with that. Please ask health-related questions.", [], False
             
             # Otherwise, try to redirect gently
             logger.info(f"[{session_id}] Borderline query - allowing with gentle redirect")
         
-        # Build document context
+        # Build document context and source citations
         document_context = ""
+        sources = []
         if relevant_chunks:
             document_context = "\n=== RELEVANT MEDICAL DOCUMENTS ===\n"
             for chunk in relevant_chunks:
-                document_context += f"\n[{chunk['source']}]\n{chunk['text']}\n"
+                page_info = f"Page {chunk.get('page_number', '?')}"
+                document_context += f"\n[{chunk['source']} ({page_info})]\n{chunk['text']}\n"
+                
+                sources.append({
+                    "file": chunk["source"],
+                    "page": chunk.get("page_number", "?"),
+                    "text": chunk["text"]
+                })
             document_context += "=== END DOCUMENTS ===\n"
         
         # Build system prompt with user info
         system_prompt = self.build_system_prompt(user_profile_context, user_name)
+        
+        # Inject language instruction
+        if target_language and target_language.lower() != "english":
+            system_prompt += (
+                f"\n\n=== LANGUAGE INSTRUCTION ===\n"
+                f"IMPORTANT: You MUST respond to the user ENTIRELY in {target_language}. "
+                f"Translate ALL your responses, medical terms, and explanations into {target_language}. "
+                f"Do NOT respond in English unless the user explicitly switches back."
+            )
+            logger.info(f"[{session_id}] Language override: {target_language}")
         
         # Build conversation
         messages = [{"role": "system", "content": system_prompt}]
@@ -346,7 +391,7 @@ IMPORTANT SAFETY RULES:
         logger.info(f"[{session_id}] Sending to LLM with {len(messages)} messages")
         response = self.llm.chat(messages)
         
-        logger.info(f"[{session_id}] Response generated: {response[:100]}...")
-        return response
+        logger.info(f"[{session_id}] Response generated (language: {target_language}): {response[:80]}...")
+        return response, sources, False
 
 rag_system = RAGSystem()

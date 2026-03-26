@@ -16,6 +16,7 @@ from backend.auth import router as auth_router
 from backend.chat import router as chat_router
 from backend.pdf_routes import router as pdf_router
 from backend.profile_routes import router as profile_router  # ADD THIS
+from backend.report_routes import router as report_router
 from backend.logger import get_logger
 
 # Load environment variables
@@ -52,6 +53,7 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(pdf_router)
 app.include_router(profile_router)  # ADD THIS
+app.include_router(report_router)
 
 # Frontend routes
 @app.get("/")
@@ -79,6 +81,11 @@ async def chat_page(request: Request):
 async def profile_page(request: Request):
     """Render profile page"""
     return templates.TemplateResponse("profile.html", {"request": request})
+
+@app.get("/dashboard")
+async def dashboard_page(request: Request):
+    """Render the health analytics dashboard"""
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 @app.get("/health")
 async def health_check():

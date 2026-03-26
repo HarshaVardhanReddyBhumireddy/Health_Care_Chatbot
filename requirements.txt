@@ -13,6 +13,9 @@ python-dotenv==1.0.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
 
+# Email validation dependency required by Pydantic
+email-validator==2.0.0.post2
+
 # Database
 pymongo==4.6.1
 
@@ -25,8 +28,8 @@ pypdf==3.17.4
 
 # Embeddings and Vector Search
 sentence-transformers==2.3.1
-faiss-cpu==1.7.4
-numpy==1.24.3
+faiss-cpu==1.8.0
+numpy==1.26.4
 
 # Text Processing (optional but useful)
 langchain==0.1.0

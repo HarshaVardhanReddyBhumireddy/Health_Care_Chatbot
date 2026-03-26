@@ -75,7 +75,7 @@ class PDFProcessor:
     
     def process_pdf(self, pdf_path: str, chunk_size: int = 500) -> List[Dict[str, str]]:
         """
-        Process a PDF into chunks with metadata
+        Process a PDF into chunks with metadata (including specific page numbers)
         
         Args:
             pdf_path: Path to PDF file
@@ -84,19 +84,39 @@ class PDFProcessor:
         Returns:
             List of dictionaries containing chunks and metadata
         """
-        text = self.extract_text_from_pdf(pdf_path)
-        chunks = self.chunk_text(text, chunk_size)
-        
-        filename = os.path.basename(pdf_path)
-        
-        processed_chunks = [
-            {
-                "text": chunk,
-                "source": filename,
-                "chunk_id": idx,
-                "total_chunks": len(chunks)
-            }
-            for idx, chunk in enumerate(chunks)
-        ]
-        
-        return processed_chunks
+        try:
+            logger.info(f"Processing PDF for chunks: {pdf_path}")
+            reader = PdfReader(pdf_path)
+            filename = os.path.basename(pdf_path)
+            
+            processed_chunks = []
+            chunk_idx = 0
+            
+            for page_num, page in enumerate(reader.pages):
+                page_text = page.extract_text()
+                if not page_text or not page_text.strip():
+                    continue
+                    
+                # Chunk this specific page's text
+                chunks = self.chunk_text(page_text, chunk_size)
+                
+                for chunk in chunks:
+                    processed_chunks.append({
+                        "text": chunk,
+                        "source": filename,
+                        "page_number": page_num + 1,
+                        "chunk_id": chunk_idx
+                    })
+                    chunk_idx += 1
+            
+            # Update total chunks across all dicts
+            total = len(processed_chunks)
+            for p in processed_chunks:
+                p["total_chunks"] = total
+                
+            logger.info(f"Created {total} chunks with page metadata for {filename}")
+            return processed_chunks
+            
+        except Exception as e:
+            logger.error(f"PDF processing error: {e}")
+            raise Exception(f"Failed to process PDF chunks: {str(e)}")

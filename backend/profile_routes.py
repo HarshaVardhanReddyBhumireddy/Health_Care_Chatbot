@@ -352,3 +352,67 @@ async def delete_medication(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete medication"
         )
+
+@router.get("/dashboard_data")
+async def get_dashboard_data(user_email: str = Depends(verify_token)):
+    """Get calculated health data for dashboard analytics"""
+    try:
+        db = Database.get_db()
+        users_collection = db["users"]
+        profiles_collection = db["user_profiles"]
+        sessions_collection = db["chat_sessions"]
+        
+        user = users_collection.find_one({"email": user_email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        user_id = str(user["_id"])
+        
+        profile = profiles_collection.find_one({"user_id": user_id})
+        sessions = list(sessions_collection.find({"user_id": user_id}))
+        
+        data = {
+            "bmi": 0,
+            "queries_count": len(sessions),
+            "total_messages": sum(len(s.get("messages", [])) for s in sessions) // 2, # User vs Assistant
+            "health_score": 85, # Default arbitrary high score
+            "risk_factors": []
+        }
+        
+        if profile:
+            basic = profile.get("basic_info", {})
+            if basic and basic.get("weight") and basic.get("height"):
+                w = basic["weight"]
+                h = basic["height"] / 100
+                bmi = round(w / (h * h), 1)
+                data["bmi"] = bmi
+                if bmi > 25:
+                    data["risk_factors"].append("Overweight (BMI)")
+                    data["health_score"] -= 5
+                
+            lifestyle = profile.get("lifestyle", {})
+            if lifestyle:
+                if lifestyle.get("smoking_status") in ["Regular", "Occasional"]:
+                    data["risk_factors"].append("Smoking")
+                    data["health_score"] -= 10
+                if lifestyle.get("alcohol_consumption") in ["Regular", "Frequent"]:
+                    data["risk_factors"].append("Alcohol")
+                    data["health_score"] -= 5
+                if lifestyle.get("stress_level") and int(lifestyle.get("stress_level")) > 7:
+                    data["risk_factors"].append("High Stress")
+                    data["health_score"] -= 5
+            
+            med_hist = profile.get("medical_history", {})
+            if med_hist and med_hist.get("chronic_conditions"):
+                data["risk_factors"].extend(med_hist["chronic_conditions"])
+                data["health_score"] -= (len(med_hist["chronic_conditions"]) * 5)
+                
+        data["health_score"] = max(0, min(100, data["health_score"]))
+        
+        return data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get dashboard data error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load dashboard data")

@@ -28,14 +28,19 @@ class ChatMessage(BaseModel):
     role: str 
     content: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    sources: Optional[List[dict]] = None
+    is_emergency: Optional[bool] = None
 
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    target_language: Optional[str] = "English"  # Language for AI to respond in
 
 class ChatResponse(BaseModel):
     response: str
     session_id: str
+    sources: List[dict] = []
+    is_emergency: bool = False
 
 class ChatSession(BaseModel):
     id: str

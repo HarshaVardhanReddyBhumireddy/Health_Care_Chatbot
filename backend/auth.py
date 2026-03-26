@@ -12,12 +12,14 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 async def signup(user: UserSignUp):
     """Register a new user"""
     try:
+        logger.info(f"Signup attempt for email: {user.email}")
         db = Database.get_db()
         users_collection = db["users"]
         
         # Check if user already exists
         existing_user = users_collection.find_one({"email": user.email})
         if existing_user:
+            logger.warning(f"Signup failed: Email already registered - {user.email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
@@ -25,6 +27,7 @@ async def signup(user: UserSignUp):
         
         existing_username = users_collection.find_one({"username": user.username})
         if existing_username:
+            logger.warning(f"Signup failed: Username already taken - {user.username}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already taken"
@@ -40,7 +43,7 @@ async def signup(user: UserSignUp):
         }
         
         result = users_collection.insert_one(user_dict)
-        logger.info(f"New user registered: {user.email}")
+        logger.info(f"New user registered: {user.email} with ID: {result.inserted_id}")
         
         return {
             "message": "User registered successfully",
@@ -50,7 +53,7 @@ async def signup(user: UserSignUp):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Signup error: {e}")
+        logger.error(f"Signup error: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed"

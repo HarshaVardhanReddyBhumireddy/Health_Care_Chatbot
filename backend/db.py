@@ -16,9 +16,9 @@ class Database:
                 db_name = os.getenv("MONGO_DB_NAME")
 
                 if not uri:
-                    raise ValueError("MONGO_URI is not set")
+                    raise ValueError("MONGO_URI is not set in environment variables")
                 if not db_name:
-                    raise ValueError("MONGO_DB_NAME is not set")
+                    raise ValueError("MONGO_DB_NAME is not set in environment variables")
 
                 logger.info("Connecting to MongoDB")
                 logger.info(f"Using MongoDB database: {db_name}")
@@ -30,7 +30,7 @@ class Database:
                 logger.info("MongoDB connection successful")
 
             except Exception as e:
-                logger.error(f"MongoDB connection failed: {e}")
+                logger.error(f"MongoDB connection failed: {type(e).__name__}: {str(e)}", exc_info=True)
                 raise
 
         return cls._db

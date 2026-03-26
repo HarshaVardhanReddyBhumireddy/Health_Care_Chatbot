@@ -56,11 +56,12 @@ async def send_message(
         conversation_history = session.get("messages", [])
         
         # CRITICAL: Pass user_id_str for profile lookup
-        assistant_response = rag_system.generate_response(
+        assistant_response, sources, is_emergency = rag_system.generate_response(
             query=chat_request.message,
             user_id=user_id_str,
             session_id=session_id,
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
+            target_language=chat_request.target_language or "English"
         )
         
         # Save messages
@@ -73,7 +74,9 @@ async def send_message(
         assistant_message = {
             "role": "assistant",
             "content": assistant_response,
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.utcnow(),
+            "sources": sources,
+            "is_emergency": is_emergency
         }
         
         sessions_collection.update_one(
@@ -88,7 +91,9 @@ async def send_message(
         
         return ChatResponse(
             response=assistant_response,
-            session_id=session_id
+            session_id=session_id,
+            sources=sources,
+            is_emergency=is_emergency
         )
         
     except HTTPException:

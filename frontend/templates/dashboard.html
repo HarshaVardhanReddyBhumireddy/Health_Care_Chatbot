@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Dashboard - Healthcare Chatbot</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="header">
+            <h1>Analytics Dashboard</h1>
+            <nav class="nav-links">
+                <a href="/chat">← Back to Chat</a>
+                <a href="/profile">My Profile</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- High-level Metrics Grid -->
+            <div class="grid-metrics">
+                <div class="metric-card">
+                    <h3>Health Score</h3>
+                    <div class="metric-value" id="healthScore">--</div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top:0.5rem">Out of 100</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Current BMI</h3>
+                    <div class="metric-value" id="bmiValue">--</div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top:0.5rem" id="bmiCategory">Calculated from profile</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Questions Asked</h3>
+                    <div class="metric-value" id="questionsCount">0</div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top:0.5rem">Across all sessions</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Chatbot Interactions</h3>
+                    <div class="metric-value" id="messagesCount">0</div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top:0.5rem">Messages exchanged</p>
+                </div>
+            </div>
+
+            <!-- Charts & Risks Area -->
+            <div class="charts-grid">
+                <!-- Large Chart for "History Trend" -->
+                <div class="chart-card">
+                    <h2>Interaction Trend</h2>
+                    <canvas id="trendChart"></canvas>
+                </div>
+
+                <!-- Risk Factors List -->
+                <div class="chart-card">
+                    <h2 style="color: var(--danger-color)">Detected Health Risks</h2>
+                    <ul class="risk-list" id="riskList">
+                        <!-- Populated by JS -->
+                        <div style="text-align:center; padding: 2rem; color: #94a3b8">Loading risks...</div>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="chart-card" style="margin-top:2rem">
+                <h2>Health Radar</h2>
+                <div style="max-width: 500px; margin: 0 auto; padding-bottom: 2rem;">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script that loads data -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
